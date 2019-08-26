@@ -132,35 +132,6 @@ man:
 html:
 	$(MAKE) -C Documentation html
 
-XGETTEXT_FLAGS = \
-	--force-po \
-	--add-comments=TRANSLATORS: \
-	--msgid-bugs-address="Git Mailing List <git@vger.kernel.org>" \
-	--from-code=UTF-8
-XGETTEXT_FLAGS_SH = $(XGETTEXT_FLAGS) --language=Shell \
-	--keyword=gettextln --keyword=eval_gettextln
-
-## Note that this is meant to be run only by the localization coordinator
-## under a very controlled condition, i.e. (1) it is to be run in a
-## Git repository (not a tarball extract), (2) any local modifications
-## will be lost.
-
-po/git-filter-branch.pot: FORCE
-	$(QUIET_XGETTEXT)$(XGETTEXT) -o$@ $(XGETTEXT_FLAGS_SH) git-filter-branch
-
-.PHONY: pot
-pot: po/git-filter-branch.pot
-
-POFILES := $(wildcard po/*.po)
-MOFILES := $(patsubst po/%.po,po/build/locale/%/LC_MESSAGES/git-filter-branch.mo,$(POFILES))
-
-ifndef NO_GETTEXT
-all:: $(MOFILES)
-endif
-
-po/build/locale/%/LC_MESSAGES/git-filter-branch.mo: po/%.po
-	$(QUIET_MSGFMT)mkdir -p $(dir $@) && $(MSGFMT) -o $@ $<
-
 ### Testing rules
 
 test:
