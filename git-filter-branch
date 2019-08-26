@@ -92,7 +92,7 @@ USAGE="[--setup <command>] [--subdirectory-filter <directory>] [--env-filter <co
 	[--] [<rev-list options>...]"
 
 OPTIONS_SPEC=
-. git-sh-setup
+. $(git --exec-path)/git-sh-setup
 
 if [ "$(is_bare_repository)" = false ]; then
 	require_clean_work_tree 'rewrite branches'
@@ -460,7 +460,7 @@ while read commit parents; do
 	else
 		tree=$(git rev-parse "$commit^{tree}")
 	fi
-	workdir=$workdir @SHELL_PATH@ -c "$filter_commit" "git commit-tree" \
+	workdir=$workdir /bin/sh -c "$filter_commit" "git commit-tree" \
 		"$tree" $parentstr < ../message > ../map/$commit ||
 			die "could not write rewritten commit"
 done <../revs
