@@ -92,6 +92,7 @@ USAGE="[--setup <command>] [--subdirectory-filter <directory>] [--env-filter <co
 	[--] [<rev-list options>...]"
 
 OPTIONS_SPEC=
+TEXTDOMAIN_OVERRIDE=git-filter-branch
 . $(git --exec-path)/git-sh-setup
 
 if [ "$(is_bare_repository)" = false ]; then

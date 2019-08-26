@@ -49,34 +49,12 @@ export ASAN_OPTIONS
 : ${LSAN_OPTIONS=abort_on_error=1}
 export LSAN_OPTIONS
 
-if test ! -f "$GIT_BUILD_DIR"/GIT-BUILD-OPTIONS
-then
-	echo >&2 'error: GIT-BUILD-OPTIONS missing (has Git been built?).'
-	exit 1
-fi
-. "$GIT_BUILD_DIR"/GIT-BUILD-OPTIONS
+PERL_PATH=${PERL_PATH:-perl}
 export PERL_PATH SHELL_PATH
 
-# Disallow the use of abbreviated options in the test suite by default
-if test -z "${GIT_TEST_DISALLOW_ABBREVIATED_OPTIONS}"
-then
-	GIT_TEST_DISALLOW_ABBREVIATED_OPTIONS=true
-	export GIT_TEST_DISALLOW_ABBREVIATED_OPTIONS
-fi
-
-################################################################
-# It appears that people try to run tests without building...
-"${GIT_TEST_INSTALLED:-$GIT_BUILD_DIR}/git$X" >/dev/null
-if test $? != 1
-then
-	if test -n "$GIT_TEST_INSTALLED"
-	then
-		echo >&2 "error: there is no working Git at '$GIT_TEST_INSTALLED'"
-	else
-		echo >&2 'error: you do not seem to have built git yet.'
-	fi
-	exit 1
-fi
+GIT_TEST_INSTALLED=${GIT_TEST_INSTALLED:-$(dirname $(command -v git))}
+GIT_TEST_CHAIN_LINT=0
+DIFF='diff'
 
 # Parse options while taking care to leave $@ intact, so we will still
 # have all the original command line options when executing the test
@@ -1183,118 +1161,7 @@ test_done () {
 	esac
 }
 
-if test -n "$valgrind"
-then
-	make_symlink () {
-		test -h "$2" &&
-		test "$1" = "$(readlink "$2")" || {
-			# be super paranoid
-			if mkdir "$2".lock
-			then
-				rm -f "$2" &&
-				ln -s "$1" "$2" &&
-				rm -r "$2".lock
-			else
-				while test -d "$2".lock
-				do
-					say "Waiting for lock on $2."
-					sleep 1
-				done
-			fi
-		}
-	}
-
-	make_valgrind_symlink () {
-		# handle only executables, unless they are shell libraries that
-		# need to be in the exec-path.
-		test -x "$1" ||
-		test "# " = "$(test_copy_bytes 2 <"$1")" ||
-		return;
-
-		base=$(basename "$1")
-		case "$base" in
-		test-*)
-			symlink_target="$GIT_BUILD_DIR/t/helper/$base"
-			;;
-		*)
-			symlink_target="$GIT_BUILD_DIR/$base"
-			;;
-		esac
-		# do not override scripts
-		if test -x "$symlink_target" &&
-		    test ! -d "$symlink_target" &&
-		    test "#!" != "$(test_copy_bytes 2 <"$symlink_target")"
-		then
-			symlink_target=../valgrind.sh
-		fi
-		case "$base" in
-		*.sh|*.perl)
-			symlink_target=../unprocessed-script
-		esac
-		# create the link, or replace it if it is out of date
-		make_symlink "$symlink_target" "$GIT_VALGRIND/bin/$base" || exit
-	}
-
-	# override all git executables in TEST_DIRECTORY/..
-	GIT_VALGRIND=$TEST_DIRECTORY/valgrind
-	mkdir -p "$GIT_VALGRIND"/bin
-	for file in $GIT_BUILD_DIR/git* $GIT_BUILD_DIR/t/helper/test-*
-	do
-		make_valgrind_symlink $file
-	done
-	# special-case the mergetools loadables
-	make_symlink "$GIT_BUILD_DIR"/mergetools "$GIT_VALGRIND/bin/mergetools"
-	OLDIFS=$IFS
-	IFS=:
-	for path in $PATH
-	do
-		ls "$path"/git-* 2> /dev/null |
-		while read file
-		do
-			make_valgrind_symlink "$file"
-		done
-	done
-	IFS=$OLDIFS
-	PATH=$GIT_VALGRIND/bin:$PATH
-	GIT_EXEC_PATH=$GIT_VALGRIND/bin
-	export GIT_VALGRIND
-	GIT_VALGRIND_MODE="$valgrind"
-	export GIT_VALGRIND_MODE
-	GIT_VALGRIND_ENABLED=t
-	test -n "$valgrind_only" && GIT_VALGRIND_ENABLED=
-	export GIT_VALGRIND_ENABLED
-elif test -n "$GIT_TEST_INSTALLED"
-then
-	GIT_EXEC_PATH=$($GIT_TEST_INSTALLED/git --exec-path)  ||
-	error "Cannot run git from $GIT_TEST_INSTALLED."
-	PATH=$GIT_TEST_INSTALLED:$GIT_BUILD_DIR/t/helper:$PATH
-	GIT_EXEC_PATH=${GIT_TEST_EXEC_PATH:-$GIT_EXEC_PATH}
-else # normal case, use ../bin-wrappers only unless $with_dashes:
-	if test -n "$no_bin_wrappers"
-	then
-		with_dashes=t
-	else
-		git_bin_dir="$GIT_BUILD_DIR/bin-wrappers"
-		if ! test -x "$git_bin_dir/git"
-		then
-			if test -z "$with_dashes"
-			then
-				say "$git_bin_dir/git is not executable; using GIT_EXEC_PATH"
-			fi
-			with_dashes=t
-		fi
-		PATH="$git_bin_dir:$PATH"
-	fi
-	GIT_EXEC_PATH=$GIT_BUILD_DIR
-	if test -n "$with_dashes"
-	then
-		PATH="$GIT_BUILD_DIR:$GIT_BUILD_DIR/t/helper:$PATH"
-	fi
-fi
-GIT_TEMPLATE_DIR="$GIT_BUILD_DIR"/templates/blt
-GIT_CONFIG_NOSYSTEM=1
-GIT_ATTR_NOSYSTEM=1
-export PATH GIT_EXEC_PATH GIT_TEMPLATE_DIR GIT_CONFIG_NOSYSTEM GIT_ATTR_NOSYSTEM
+PATH=$GIT_BUILD_DIR:$PATH
 
 if test -z "$GIT_TEST_CMP"
 then
@@ -1304,19 +1171,6 @@ then
 	else
 		GIT_TEST_CMP="$DIFF -u"
 	fi
-fi
-
-GITPERLLIB="$GIT_BUILD_DIR"/perl/build/lib
-export GITPERLLIB
-test -d "$GIT_BUILD_DIR"/templates/blt || {
-	error "You haven't built things yet, have you?"
-}
-
-if ! test -x "$GIT_BUILD_DIR"/t/helper/test-tool$X
-then
-	echo >&2 'You need to build test-tool:'
-	echo >&2 'Run "make t/helper/test-tool" in the source (toplevel) directory'
-	exit 1
 fi
 
 # Test repository
