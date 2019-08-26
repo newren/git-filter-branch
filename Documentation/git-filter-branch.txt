@@ -16,6 +16,17 @@ SYNOPSIS
 	[--original <namespace>] [-d <directory>] [-f | --force]
 	[--state-branch <branch>] [--] [<rev-list options>...]
 
+WARNING
+-------
+'git filter-branch' has a litany of gotchas that can and will cause
+history to be rewritten incorrectly (in addition to abysmal
+performance).  These issues cannot be backward compatibly fixed and as
+such, its use is not recommended.  Please use an alternative history
+filtering tool such as 'git filter-repo'.  If you still need to use
+'git filter-branch', please carefully read the "Safety" section of
+https://public-inbox.org/git/CABPp-BEDOH-row-hxY4u_cP30ptqOpcCvPibwyZ2wBu142qUbA@mail.gmail.com/
+and avoid as many of the pitfalls listed there as reasonably possible.
+
 DESCRIPTION
 -----------
 Lets you rewrite Git revision history by rewriting the branches mentioned
@@ -444,37 +455,6 @@ warned.
 * Garbage collect all unreferenced objects with `git gc --prune=now`
   (or if your git-gc is not new enough to support arguments to
   `--prune`, use `git repack -ad; git prune` instead).
-
-NOTES
------
-
-git-filter-branch allows you to make complex shell-scripted rewrites
-of your Git history, but you probably don't need this flexibility if
-you're simply _removing unwanted data_ like large files or passwords.
-For those operations you may want to consider
-http://rtyley.github.io/bfg-repo-cleaner/[The BFG Repo-Cleaner],
-a JVM-based alternative to git-filter-branch, typically at least
-10-50x faster for those use-cases, and with quite different
-characteristics:
-
-* Any particular version of a file is cleaned exactly _once_. The BFG,
-  unlike git-filter-branch, does not give you the opportunity to
-  handle a file differently based on where or when it was committed
-  within your history. This constraint gives the core performance
-  benefit of The BFG, and is well-suited to the task of cleansing bad
-  data - you don't care _where_ the bad data is, you just want it
-  _gone_.
-
-* By default The BFG takes full advantage of multi-core machines,
-  cleansing commit file-trees in parallel. git-filter-branch cleans
-  commits sequentially (i.e. in a single-threaded manner), though it
-  _is_ possible to write filters that include their own parallelism,
-  in the scripts executed against each commit.
-
-* The http://rtyley.github.io/bfg-repo-cleaner/#examples[command options]
-  are much more restrictive than git-filter branch, and dedicated just
-  to the tasks of removing unwanted data- e.g:
-  `--strip-blobs-bigger-than 1M`.
 
 GIT
 ---
